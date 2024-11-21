@@ -119,6 +119,24 @@ class Work(BaseModel):
 }}
 """
 
+    def to_mla(self):
+        # If there are three or more authors, list only the first author followed by the phrase et al.
+        # If there are two, list "and" between the names (Last, First and First Last)
+        # If there is only one author, list the author's name normally (Last, First)
+        if len(self.authorships) > 2:
+            authors = self.authorships[0].author.last_first() + ", et al"
+        elif len(self.authorships) == 2:
+            authors = (
+                self.authorships[0].author.last_first()
+                + " and "
+                + self.authorships[1].author.last_first().split(",")[1]
+                + " "
+                + self.authorships[1].author.last_first().split(",")[::-1][0]
+            )
+        else:
+            authors = self.authorships[0].author.last_first()
+        return f'{authors}. "{self.title}." {self.locations[0].source.display_name}, {self.publication_date.year}.'
+
 
 def sluggable(func):
     """
