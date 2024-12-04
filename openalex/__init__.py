@@ -277,6 +277,17 @@ class OpenAlex:
             raise ValueError("No results found for search " + search)
 
     @sluggable
+    def get_author_uri_by_orcid(self, search: str):
+        if self.mailto:
+            response_data = self._get(f"authors/orcid:{search}&mailto={self.mailto}")
+        else:
+            response_data = self._get(f"authors/orcid:{search}")
+        if "id" in response_data:
+            return response_data["id"]
+        else:
+            raise ValueError("No results found for search " + search)
+
+    @sluggable
     def get_work_by_search(self, search: str) -> Work:
         if self.mailto:
             response_data = self._get(f"works?search={search}&mailto={self.mailto}")
