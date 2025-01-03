@@ -69,6 +69,7 @@ class Work(BaseModel):
     authorships: list[Authorship]
     publication_date: datetime.date
     locations: list[Location]
+    referenced_works: list[str] = []
 
     # To make the class generate Authorship objects
     @pydantic.validator("authorships", pre=True)
@@ -233,10 +234,12 @@ class OpenAlex:
         if response.status_code == 429 and retry_429:
             time.sleep(1)
             return self._get(endpoint, retry_429 - 1, **kwargs)
+        if response.status_code == 301:
+            return self._get(response.headers["location"], **kwargs)
         response.raise_for_status()
         return response.json()
 
-    def _get_noun(self, noun: Literal["works", "authors"], **kwargs):
+    def _get_nouns(self, noun: Literal["works", "authors"], **kwargs):
         filter_params = kwargs.get("filter", {})
         filter_string = (
             "filter=" + ",".join([f"{k}:{v}" for k, v in filter_params.items()])
@@ -248,13 +251,24 @@ class OpenAlex:
             return self._get(f"{noun}?{filter_string}&page={page}&mailto={self.mailto}")
         return self._get(f"{noun}?{filter_string}&page={page}")
 
+    def _get_noun_by_id(self, noun: Literal["works", "authors"], id: str, **kwargs):
+        if self.mailto:
+            return self._get(f"{noun}/{id}?mailto={self.mailto}")
+        return self._get(f"{noun}/{id}")
+
     @depaginated
     def get_works(self, **kwargs):
-        return self._get_noun("works", **kwargs)
+        return self._get_nouns("works", **kwargs)
+
+    def get_work(self, work_slug: str):
+        return Work(**self._get_noun_by_id("works", work_slug))
 
     @depaginated
     def get_authors(self, **kwargs):
-        return self._get_noun("authors", **kwargs)
+        return self._get_nouns("authors", **kwargs)
+
+    def get_author(self, author_slug: str):
+        return Author(**self._get_noun_by_id("authors", author_slug))
 
     @depaginated
     def get_citers(self, work_slug: str, **kwargs):
